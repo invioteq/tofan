@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - tofan.io.tofan.io
+  resources:
+  - objecttemplates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tofan.io.tofan.io
+  resources:
+  - objecttemplates/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - tofan.io.tofan.io
+  resources:
+  - objecttemplates/status
+  verbs:
+  - get
+  - patch
+  - update

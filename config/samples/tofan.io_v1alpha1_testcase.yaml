@@ -1,0 +1,12 @@
+apiVersion: tofan.io.tofan.io/v1alpha1
+kind: TestCase
+metadata:
+  labels:
+    app.kubernetes.io/name: testcase
+    app.kubernetes.io/instance: testcase-sample
+    app.kubernetes.io/part-of: tofan
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: tofan
+  name: testcase-sample
+spec:
+  # TODO(user): Add fields here

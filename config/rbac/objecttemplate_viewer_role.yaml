@@ -1,0 +1,27 @@
+# permissions for end users to view objecttemplates.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: objecttemplate-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: tofan
+    app.kubernetes.io/part-of: tofan
+    app.kubernetes.io/managed-by: kustomize
+  name: objecttemplate-viewer-role
+rules:
+- apiGroups:
+  - tofan.io.tofan.io
+  resources:
+  - objecttemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - tofan.io.tofan.io
+  resources:
+  - objecttemplates/status
+  verbs:
+  - get
