@@ -1,4 +1,4 @@
-![Tofan](docs/imgs/tofan-io.png "Tofan")
+![Tofan](docs/imgs/tofan-io-readme.jpg "Tofan")
 
 Tofan is a Kubernetes operator designed to automate and streamline the performance testing of Kubernetes controllers. It dynamically manages resource creation, orchestrates test workflows, and aggregates metrics directly from target controllers, providing comprehensive reports on performance outcomes. Built for integration and scalability, Tofan offers a declarative approach to ensure your cluster components are tested thoroughly and efficiently.
 ## License
