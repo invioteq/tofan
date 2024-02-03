@@ -1,6 +1,0 @@
-## Append samples of your project ##
-resources:
-- tofan.io_v1alpha1_objecttemplate.yaml
-- tofan.io_v1alpha1_testcase.yaml
-- tofan.io_v1alpha1_report.yaml
-#+kubebuilder:scaffold:manifestskustomizesamples
