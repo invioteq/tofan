@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"github.com/invioteq/tofan/internal/common"
+	"github.com/invioteq/tofan/internal/objecttemplate"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -32,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	tofaniov1alpha1 "github.com/invioteq/tofan/api/v1alpha1"
-	"github.com/invioteq/tofan/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -89,25 +90,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ObjectTemplateReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+	if err = (&objecttemplate.Reconciler{
+		Reconciler: common.Reconciler{
+			Client:   mgr.GetClient(),
+			Log:      ctrl.Log.WithName("ObjectTemplate"),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("object-template"),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ObjectTemplate")
-		os.Exit(1)
-	}
-	if err = (&controller.TestCaseReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "TestCase")
-		os.Exit(1)
-	}
-	if err = (&controller.ReportReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Report")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
