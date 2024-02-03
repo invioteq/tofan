@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -25,21 +26,23 @@ import (
 
 // ObjectTemplateSpec defines the desired state of ObjectTemplate
 type ObjectTemplateSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ObjectTemplate. Edit objecttemplate_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// NamePrefix is the prefix used for generated object names
+	NamePrefix string `json:"namePrefix,omitempty"`
+	// Template is the raw Kubernetes object template
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Template runtime.RawExtension `json:"template"`
 }
 
 // ObjectTemplateStatus defines the observed state of ObjectTemplate
 type ObjectTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions List of status conditions to indicate the status of Space
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status",description="Ready"
 
 // ObjectTemplate is the Schema for the objecttemplates API
 type ObjectTemplate struct {

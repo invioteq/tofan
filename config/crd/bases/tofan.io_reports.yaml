@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: objecttemplates.tofan.io.tofan.io
+  name: reports.tofan.io
 spec:
-  group: tofan.io.tofan.io
+  group: tofan.io
   names:
-    kind: ObjectTemplate
-    listKind: ObjectTemplateList
-    plural: objecttemplates
-    singular: objecttemplate
+    kind: Report
+    listKind: ReportList
+    plural: reports
+    singular: report
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ObjectTemplate is the Schema for the objecttemplates API
+        description: Report is the Schema for the reports API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,15 +32,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: ObjectTemplateSpec defines the desired state of ObjectTemplate
+            description: ReportSpec defines the desired state of Report
             properties:
               foo:
-                description: Foo is an example field of ObjectTemplate. Edit objecttemplate_types.go
+                description: Foo is an example field of Report. Edit report_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: ObjectTemplateStatus defines the observed state of ObjectTemplate
+            description: ReportStatus defines the observed state of Report
             type: object
         type: object
     served: true
