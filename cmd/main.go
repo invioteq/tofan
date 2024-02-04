@@ -20,6 +20,7 @@ import (
 	"flag"
 	"github.com/invioteq/tofan/internal/common"
 	"github.com/invioteq/tofan/internal/objecttemplate"
+	"github.com/invioteq/tofan/internal/testcase"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -101,6 +102,19 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ObjectTemplate")
 		os.Exit(1)
 	}
+
+	if err = (&testcase.Reconciler{
+		Reconciler: common.Reconciler{
+			Client:   mgr.GetClient(),
+			Log:      ctrl.Log.WithName("TestCase"),
+			Scheme:   mgr.GetScheme(),
+			Recorder: mgr.GetEventRecorderFor("test-case"),
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "TestCase")
+		os.Exit(1)
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

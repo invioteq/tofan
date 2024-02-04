@@ -30,3 +30,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - tofan.io
+  resources:
+  - testcases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tofan.io
+  resources:
+  - testcases/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - tofan.io
+  resources:
+  - testcases/status
+  verbs:
+  - get
+  - patch
+  - update

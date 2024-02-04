@@ -25,21 +25,58 @@ import (
 
 // TestCaseSpec defines the desired state of TestCase
 type TestCaseSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Reference to a ObjectTemplate
+	ObjectTemplateRef objectTemplateReference `json:"objectTemplateRef,omitempty"`
+	// Action specifies the operation to perform with the ObjectTemplate (e.g., create, delete)
+	Action string `json:"action,omitempty"`
+	// Count specifies the number of instances to create/delete
+	Count int `json:"count"`
+	// Concurrency specifies how many operations can be performed concurrently
+	Concurrency int `json:"concurrency"`
+	// DynamicFields specifies how to dynamically set fields in the ObjectTemplate based on the test case.
+	DynamicFields []DynamicField `json:"dynamicFields,omitempty"`
+	// TargetMetrics defines the metrics that should be collected during the test
+	TargetMetrics []MetricTarget `json:"targetMetrics,omitempty"`
+}
 
-	// Foo is an example field of TestCase. Edit testcase_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+// DynamicField defines a field to dynamically set based on TestCase parameters.
+type DynamicField struct {
+	// Path specifies the JSON path to the field within the ObjectTemplate that needs to be dynamically set.
+	Path string `json:"path"`
+
+	// Values are the values to apply to the dynamic field as simple strings.
+	Values []string `json:"values"`
+}
+
+// objectTemplateReference
+type objectTemplateReference struct {
+	// Name of the ObjectTemplate.
+	Name string `json:"name,omitempty"`
+	// Kind specifies the kind of the referenced resource, which should be "ObjectTemplate".
+	Kind string `json:"kind,omitempty"`
+	// Group is the API group of the SpaceTemplate,  "tofan.io/v1alpha1".
+	Group string `json:"group,omitempty"`
+}
+
+// MetricTarget defines a target metric for collection by the testCase
+type MetricTarget struct {
+	// Name is the name of the metric
+	Name string `json:"name"`
+
+	// Expr is the expression used to calculate or define the metric
+	Expr string `json:"expr"`
 }
 
 // TestCaseStatus defines the observed state of TestCase
 type TestCaseStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions List of status conditions to indicate the status of Space
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age"
+//+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status",description="Ready"
 
 // TestCase is the Schema for the testcases API
 type TestCase struct {
