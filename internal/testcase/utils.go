@@ -1,13 +1,20 @@
 package testcase
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	tofaniov1alpha1 "github.com/invioteq/tofan/api/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"math/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 	"strings"
+	"time"
 )
 
-func (r *Reconciler) ProcessTestCase(objectTemplate *tofaniov1alpha1.ObjectTemplate, testCase *tofaniov1alpha1.TestCase) error {
+func (r *Reconciler) ProcessTestCase(ctx context.Context, objectTemplate *tofaniov1alpha1.ObjectTemplate, testCase *tofaniov1alpha1.TestCase) error {
 	for _, field := range testCase.Spec.DynamicFields {
 		for _, value := range field.Values {
 			// Apply each value to the template independently
@@ -21,7 +28,7 @@ func (r *Reconciler) ProcessTestCase(objectTemplate *tofaniov1alpha1.ObjectTempl
 
 			// Here, you would typically create or update the resource based on the modified template
 			// This involves converting the JSON back into a Kubernetes object and applying it
-			// The specific implementation will depend on your use case and Kubernetes client library
+			err = r.ApplyObjectToCluster(ctx, modifiedTemplate)
 		}
 	}
 	return nil
@@ -39,6 +46,15 @@ func (r *Reconciler) ApplyValueToTemplate(objectTemplate *tofaniov1alpha1.Object
 	if err := navigateAndApplyValue(&templateMap, path, value); err != nil {
 		r.Log.Error(err, "Failed to apply value to path", "Path", path, "Value", value)
 		return nil, err
+	}
+
+	// Generate a unique name for the object if it has a metadata.name field
+	if metadata, ok := templateMap["metadata"].(map[string]interface{}); ok {
+		if _, ok := metadata["name"].(string); ok {
+			uniqueName := metadata["name"].(string) + "-" + generateRandomString(5)
+			metadata["name"] = uniqueName
+			r.Log.Info("Set unique name for object", "Name", uniqueName)
+		}
 	}
 
 	// Re-serialize the modified map back to JSON
@@ -73,4 +89,77 @@ func navigateAndApplyValue(templateMap *map[string]interface{}, path string, val
 	}
 
 	return fmt.Errorf("path not found: %s", path)
+}
+
+func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) error {
+	// First, convert JSON to YAML because some Kubernetes APIs expect YAML
+	objJSON, err := yaml.YAMLToJSON(objJSON)
+	if err != nil {
+		r.Log.Error(err, "Failed to convert object YAML to JSON")
+		return err
+	}
+
+	// Decode the JSON into an unstructured.Unstructured object
+	var unstrObj unstructured.Unstructured
+	if err := json.Unmarshal(objJSON, &unstrObj); err != nil {
+		r.Log.Error(err, "Failed to unmarshal JSON into Unstructured object")
+		return err
+	}
+
+	// Set GVK from the unstructured object itself
+	gvk := unstrObj.GroupVersionKind()
+
+	// Prepare the object for the Create or Update operation
+	unstrObj.SetGroupVersionKind(gvk)
+	if unstrObj.GetNamespace() == "" {
+		unstrObj.SetNamespace("default")
+	}
+	if unstrObj.GetName() == "" {
+		// Generate a unique name if not provided, for example:
+		unstrObj.SetName("example-name-" + generateRandomString(5))
+	}
+
+	// Use the controller-runtime client to apply the object to the cluster
+	// Check if the object already exists
+	namespacedName := client.ObjectKey{Namespace: unstrObj.GetNamespace(), Name: unstrObj.GetName()}
+	var existing unstructured.Unstructured
+	existing.SetGroupVersionKind(gvk)
+	err = r.Client.Get(ctx, namespacedName, &existing)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// Resource does not exist, so create it
+			if err := r.Client.Create(ctx, &unstrObj); err != nil {
+				r.Log.Error(err, "Failed to create new resource")
+				return err
+			}
+			r.Log.Info("Successfully created new resource", "GVK", gvk, "Name", unstrObj.GetName())
+			return nil
+		} else {
+			// An actual error occurred other than Not Found
+			r.Log.Error(err, "Failed to get existing resource")
+			return err
+		}
+	} else {
+		// Resource exists, update it
+		unstrObj.SetResourceVersion(existing.GetResourceVersion())
+		if err := r.Client.Update(ctx, &unstrObj); err != nil {
+			r.Log.Error(err, "Failed to update existing resource")
+			return err
+		}
+		r.Log.Info("Successfully updated existing resource", "GVK", gvk, "Name", unstrObj.GetName())
+		return nil
+	}
+}
+
+// generateRandomString creates a random string of length n using rand.Source
+func generateRandomString(n int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyz0123456789"
+	source := rand.NewSource(time.Now().UnixNano())
+	b := make([]byte, n)
+	r := rand.New(source) // Create a new rand.Rand with the given source
+	for i := range b {
+		b[i] = letterBytes[r.Int63()%int64(len(letterBytes))]
+	}
+	return string(b)
 }

@@ -47,7 +47,7 @@ func (r *Reconciler) syncTestCase(ctx context.Context, testCase *tofaniov1alpha1
 			// Handle error accordingly, maybe requeue or set an error status on the TestCase
 			return ctrl.Result{}, err
 		}
-		err = r.ProcessTestCase(objectTemplate, testCase)
+		err = r.ProcessTestCase(ctx, objectTemplate, testCase)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
