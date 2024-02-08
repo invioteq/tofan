@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (r *Reconciler) syncDeleteObjectTemplate(ctx context.Context, testCase *tofaniov1alpha1.TestCase) (result reconcile.Result, err error) {
+func (r *Reconciler) syncDeleteTestCase(ctx context.Context, testCase *tofaniov1alpha1.TestCase) (result reconcile.Result, err error) {
 	if controllerutil.ContainsFinalizer(testCase, constants.TofanObjectTemplateFinalizer) {
 		controllerutil.RemoveFinalizer(testCase, constants.TofanObjectTemplateFinalizer)
 
@@ -42,6 +42,16 @@ func (r *Reconciler) syncTestCase(ctx context.Context, testCase *tofaniov1alpha1
 	if !controllerutil.ContainsFinalizer(testCase, constants.TofanObjectTemplateFinalizer) {
 		controllerutil.AddFinalizer(testCase, constants.TofanObjectTemplateFinalizer)
 
+		objectTemplate, err := r.FetchObjectTemplate(ctx, testCase.Namespace, testCase.Spec.ObjectTemplateRef.Name)
+		if err != nil {
+			// Handle error accordingly, maybe requeue or set an error status on the TestCase
+			return ctrl.Result{}, err
+		}
+		err = r.ProcessTestCase(objectTemplate, testCase)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		//r.Log.Info("modifiedTemplate", modifiedTemplate)
 		if err = r.Update(ctx, testCase); err != nil {
 			r.Log.Info("Reconciling TestCase")
 

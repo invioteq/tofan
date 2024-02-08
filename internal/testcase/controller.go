@@ -53,7 +53,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 	if !testCase.ObjectMeta.DeletionTimestamp.IsZero() {
-		return r.syncTestCase(ctx, testCase)
+		return r.syncDeleteTestCase(ctx, testCase)
 	}
 	return r.syncTestCase(ctx, testCase)
 }
