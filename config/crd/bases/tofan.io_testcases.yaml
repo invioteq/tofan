@@ -14,7 +14,16 @@ spec:
     singular: testcase
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: Age
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - description: Ready
+      jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: Ready
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: TestCase is the Schema for the testcases API
@@ -34,13 +43,149 @@ spec:
           spec:
             description: TestCaseSpec defines the desired state of TestCase
             properties:
-              foo:
-                description: Foo is an example field of TestCase. Edit testcase_types.go
-                  to remove/update
+              action:
+                description: Action specifies the operation to perform with the ObjectTemplate
+                  (e.g., create, delete)
                 type: string
+              concurrency:
+                description: Concurrency specifies how many operations can be performed
+                  concurrently
+                type: integer
+              count:
+                description: Count specifies the number of instances to create/delete
+                type: integer
+              dynamicFields:
+                description: DynamicFields specifies how to dynamically set fields
+                  in the ObjectTemplate based on the test case.
+                items:
+                  description: DynamicField defines a field to dynamically set based
+                    on TestCase parameters.
+                  properties:
+                    path:
+                      description: Path specifies the JSON path to the field within
+                        the ObjectTemplate that needs to be dynamically set.
+                      type: string
+                    values:
+                      additionalProperties:
+                        x-kubernetes-preserve-unknown-fields: true
+                      description: Values are the values to apply to the dynamic field
+                        as simple strings.
+                      type: object
+                  required:
+                  - path
+                  - values
+                  type: object
+                type: array
+              objectTemplateRef:
+                description: Reference to a ObjectTemplate
+                properties:
+                  group:
+                    description: Group is the API group of the SpaceTemplate,  "tofan.io/v1alpha1".
+                    type: string
+                  kind:
+                    description: Kind specifies the kind of the referenced resource,
+                      which should be "ObjectTemplate".
+                    type: string
+                  name:
+                    description: Name of the ObjectTemplate.
+                    type: string
+                type: object
+              targetMetrics:
+                description: TargetMetrics defines the metrics that should be collected
+                  during the test
+                items:
+                  description: MetricTarget defines a target metric for collection
+                    by the testCase
+                  properties:
+                    expr:
+                      description: Expr is the expression used to calculate or define
+                        the metric
+                      type: string
+                    name:
+                      description: Name is the name of the metric
+                      type: string
+                  required:
+                  - expr
+                  - name
+                  type: object
+                type: array
+            required:
+            - concurrency
+            - count
             type: object
           status:
             description: TestCaseStatus defines the observed state of TestCase
+            properties:
+              conditions:
+                description: Conditions List of status conditions to indicate the
+                  status of Space
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource. --- This struct is intended for direct
+                    use as an array at the field path .status.conditions.  For example,
+                    \n type FooStatus struct{ // Represents the observations of a
+                    foo's current state. // Known .status.conditions.type are: \"Available\",
+                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                    `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another. This should be when
+                        the underlying condition changed.  If that is not known, then
+                        using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human readable message indicating
+                        details about the transition. This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.generation
+                        that the condition was set based upon. For instance, if .metadata.generation
+                        is currently 12, but the .status.conditions[x].observedGeneration
+                        is 9, the condition is out of date with respect to the current
+                        state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: reason contains a programmatic identifier indicating
+                        the reason for the condition's last transition. Producers
+                        of specific condition types may define expected values and
+                        meanings for this field, and whether the values are considered
+                        a guaranteed API. The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        --- Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
             type: object
         type: object
     served: true
