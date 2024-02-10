@@ -66,11 +66,11 @@ spec:
                         the ObjectTemplate that needs to be dynamically set.
                       type: string
                     values:
+                      additionalProperties:
+                        x-kubernetes-preserve-unknown-fields: true
                       description: Values are the values to apply to the dynamic field
                         as simple strings.
-                      items:
-                        type: string
-                      type: array
+                      type: object
                   required:
                   - path
                   - values

@@ -22,6 +22,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -31,8 +32,10 @@ func (in *DynamicField) DeepCopyInto(out *DynamicField) {
 	*out = *in
 	if in.Values != nil {
 		in, out := &in.Values, &out.Values
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]apiextensionsv1.JSON, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
 	}
 }
 

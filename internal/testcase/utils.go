@@ -3,55 +3,71 @@ package testcase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	tofaniov1alpha1 "github.com/invioteq/tofan/api/v1alpha1"
+	"github.com/invioteq/tofan/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"math/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
-	"strings"
-	"time"
 )
 
 func (r *Reconciler) ProcessTestCase(ctx context.Context, objectTemplate *tofaniov1alpha1.ObjectTemplate, testCase *tofaniov1alpha1.TestCase) error {
 	for _, field := range testCase.Spec.DynamicFields {
-		for _, value := range field.Values {
-			// Apply each value to the template independently
-			modifiedTemplate, err := r.ApplyValueToTemplate(objectTemplate, field.Path, value)
+		// `field.Values` is now a map, so iterate through the map
+		for key, jsonValue := range field.Values {
+			// Convert extv1.JSON to raw JSON bytes
+			rawJSONValue, err := jsonValue.MarshalJSON()
 			if err != nil {
-				r.Log.Error(err, "Failed to apply dynamic field value to template", "Path", field.Path, "Value", value)
+				r.Log.Error(err, "Failed to marshal dynamic field value to JSON", "Path", field.Path, "Key", key)
 				continue // Move to the next value or field on error
 			}
 
-			r.Log.Info("Successfully applied value to template", "Path", field.Path, "Value", value, "ModifiedTemplate", string(modifiedTemplate))
+			// Apply each value to the template independently
+			modifiedTemplate, err := r.ApplyValueToTemplate(objectTemplate, field.Path, rawJSONValue)
+			if err != nil {
+				r.Log.Error(err, "Failed to apply dynamic field value to template", "Path", field.Path, "Value", rawJSONValue)
+				continue // Move to the next value or field on error
+			}
+
+			r.Log.Info("Successfully applied value to template", "Path", field.Path, "Key", key, "ModifiedTemplate", string(modifiedTemplate))
 
 			// Here, you would typically create or update the resource based on the modified template
 			// This involves converting the JSON back into a Kubernetes object and applying it
 			err = r.ApplyObjectToCluster(ctx, modifiedTemplate)
+			if err != nil {
+				// Handle the error appropriately
+				r.Log.Error(err, "Failed to apply object to cluster", "ModifiedTemplate", modifiedTemplate)
+			}
 		}
 	}
 	return nil
 }
 
 // ApplyValueToTemplate applies dynamic field value to the specified ObjectTemplate
-func (r *Reconciler) ApplyValueToTemplate(objectTemplate *tofaniov1alpha1.ObjectTemplate, path string, value string) ([]byte, error) {
+func (r *Reconciler) ApplyValueToTemplate(objectTemplate *tofaniov1alpha1.ObjectTemplate, path string, value []byte) ([]byte, error) {
 	var templateMap map[string]interface{}
 	if err := json.Unmarshal(objectTemplate.Spec.Template.Raw, &templateMap); err != nil {
 		r.Log.Error(err, "Failed to unmarshal ObjectTemplate into map")
 		return nil, err
 	}
 
-	// Navigate and apply the value to the specified path
-	if err := navigateAndApplyValue(&templateMap, path, value); err != nil {
-		r.Log.Error(err, "Failed to apply value to path", "Path", path, "Value", value)
+	// Deserialize the Raw content of runtime.RawExtension (now referred to as value) to the expected type
+	var actualValue interface{}
+	if err := json.Unmarshal(value, &actualValue); err != nil {
+		r.Log.Error(err, "Failed to unmarshal value", "Path", path)
+		return nil, err
+	}
+
+	// Navigate and apply the deserialized value to the specified path
+	if err := utils.NavigateAndApplyValue(&templateMap, path, actualValue); err != nil {
+		r.Log.Error(err, "Failed to apply value to path", "Path", path, "Value", actualValue)
 		return nil, err
 	}
 
 	// Generate a unique name for the object if it has a metadata.name field
 	if metadata, ok := templateMap["metadata"].(map[string]interface{}); ok {
-		if _, ok := metadata["name"].(string); ok {
-			uniqueName := metadata["name"].(string) + "-" + generateRandomString(5)
+		if name, ok := metadata["name"].(string); ok {
+			uniqueName := name + "-" + utils.GenerateRandomString(5) // Ensure unique naming
 			metadata["name"] = uniqueName
 			r.Log.Info("Set unique name for object", "Name", uniqueName)
 		}
@@ -65,30 +81,6 @@ func (r *Reconciler) ApplyValueToTemplate(objectTemplate *tofaniov1alpha1.Object
 	}
 
 	return modifiedTemplate, nil
-}
-
-// navigateAndApplyValue navigates the templateMap based on the path and applies the value.
-func navigateAndApplyValue(templateMap *map[string]interface{}, path string, value string) error {
-	currentMap := *templateMap
-	pathParts := strings.Split(path, ".")
-
-	for i, part := range pathParts {
-		if i == len(pathParts)-1 {
-			currentMap[part] = value // Apply the value at the target path
-			return nil
-		} else {
-			if nextMap, ok := currentMap[part].(map[string]interface{}); ok {
-				currentMap = nextMap
-			} else {
-				// The next part of the path does not exist or is not a map, so we need to create it
-				newMap := make(map[string]interface{})
-				currentMap[part] = newMap
-				currentMap = newMap
-			}
-		}
-	}
-
-	return fmt.Errorf("path not found: %s", path)
 }
 
 func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) error {
@@ -116,7 +108,7 @@ func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) e
 	}
 	if unstrObj.GetName() == "" {
 		// Generate a unique name if not provided, for example:
-		unstrObj.SetName("example-name-" + generateRandomString(5))
+		unstrObj.SetName("testcase-" + utils.GenerateRandomString(5))
 	}
 
 	// Use the controller-runtime client to apply the object to the cluster
@@ -150,16 +142,4 @@ func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) e
 		r.Log.Info("Successfully updated existing resource", "GVK", gvk, "Name", unstrObj.GetName())
 		return nil
 	}
-}
-
-// generateRandomString creates a random string of length n using rand.Source
-func generateRandomString(n int) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyz0123456789"
-	source := rand.NewSource(time.Now().UnixNano())
-	b := make([]byte, n)
-	r := rand.New(source) // Create a new rand.Rand with the given source
-	for i := range b {
-		b[i] = letterBytes[r.Int63()%int64(len(letterBytes))]
-	}
-	return string(b)
 }

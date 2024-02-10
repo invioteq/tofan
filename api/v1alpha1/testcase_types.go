@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	extv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +46,7 @@ type DynamicField struct {
 	Path string `json:"path"`
 
 	// Values are the values to apply to the dynamic field as simple strings.
-	Values []string `json:"values"`
+	Values map[string]extv1.JSON `json:"values"`
 }
 
 // objectTemplateReference
