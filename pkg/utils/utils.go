@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	tofaniov1alpha1 "github.com/invioteq/tofan/api/v1alpha1"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -86,4 +87,24 @@ func GenerateRandomString(n int) string {
 		b[i] = letterBytes[r.Int63()%int64(len(letterBytes))]
 	}
 	return string(b)
+}
+
+// ExtractKindAndAPIVersion extracts the kind and apiVersion from an ObjectTemplate's spec.template.
+func ExtractKindAndAPIVersion(objectTemplate *tofaniov1alpha1.ObjectTemplate) (string, string, error) {
+	var templateMap map[string]interface{}
+	if err := json.Unmarshal(objectTemplate.Spec.Template.Raw, &templateMap); err != nil {
+		return "", "", err
+	}
+
+	kind, ok := templateMap["kind"].(string)
+	if !ok {
+		return "", "", fmt.Errorf("kind not found or not a string in ObjectTemplate spec.template")
+	}
+
+	apiVersion, ok := templateMap["apiVersion"].(string)
+	if !ok {
+		return "", "", fmt.Errorf("apiVersion not found or not a string in ObjectTemplate spec.template")
+	}
+
+	return kind, apiVersion, nil
 }

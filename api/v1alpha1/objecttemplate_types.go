@@ -35,6 +35,10 @@ type ObjectTemplateSpec struct {
 
 // ObjectTemplateStatus defines the observed state of ObjectTemplate
 type ObjectTemplateStatus struct {
+	// Group is the API group of the objectTemplate.
+	Group string `json:"group,omitempty"`
+	// kind the kind of the objectTemplate.
+	Kind string `json:"kind,omitempty"`
 	// Conditions List of status conditions to indicate the status of Space
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
@@ -43,6 +47,8 @@ type ObjectTemplateStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status",description="Ready"
+// +kubebuilder:printcolumn:name="Group",type=string,JSONPath=`.status.group`
+// +kubebuilder:printcolumn:name="Kind",type=string,JSONPath=`.status.kind`
 
 // ObjectTemplate is the Schema for the objecttemplates API
 type ObjectTemplate struct {
@@ -51,6 +57,14 @@ type ObjectTemplate struct {
 
 	Spec   ObjectTemplateSpec   `json:"spec,omitempty"`
 	Status ObjectTemplateStatus `json:"status,omitempty"`
+}
+
+func (in *ObjectTemplate) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+func (in *ObjectTemplate) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true
