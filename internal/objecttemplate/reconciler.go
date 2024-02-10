@@ -24,10 +24,11 @@ func (r *Reconciler) syncObjectTemplate(ctx context.Context, objecTpl *tofaniov1
 
 	r.ProcessCondition(ctx, objecTpl, constants.ObjConditionReady, metav1.ConditionTrue, "ObjectTemplateSyncSuccess", "ObjectTemplate synced successfully")
 	// Update the ObjectTpl status with kind & Group
-	ObjKind, ObjApiVersion, err := utils.ExtractKindAndAPIVersion(objecTpl)
+	ObjKind, ObjGroup, ObjVersion, err := utils.ExtractKindAndAPIVersion(objecTpl)
 
-	objecTpl.Status.Group = ObjApiVersion
+	objecTpl.Status.Group = ObjGroup
 	objecTpl.Status.Kind = ObjKind
+	objecTpl.Status.Version = ObjVersion
 	err = r.UpdateStatus(ctx, objecTpl)
 	if err != nil {
 		r.Log.Info("error updating the status")

@@ -3,19 +3,25 @@ package testcase
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	tofaniov1alpha1 "github.com/invioteq/tofan/api/v1alpha1"
+	"github.com/invioteq/tofan/pkg/constants"
 	"github.com/invioteq/tofan/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
+	"strings"
 )
 
 func (r *Reconciler) ProcessTestCase(ctx context.Context, objectTemplate *tofaniov1alpha1.ObjectTemplate, testCase *tofaniov1alpha1.TestCase) error {
 	for _, field := range testCase.Spec.DynamicFields {
 		// `field.Values` is now a map, so iterate through the map
 		for key, jsonValue := range field.Values {
-			// Convert extv1.JSON to raw JSON bytes
 			rawJSONValue, err := jsonValue.MarshalJSON()
 			if err != nil {
 				r.Log.Error(err, "Failed to marshal dynamic field value to JSON", "Path", field.Path, "Key", key)
@@ -31,12 +37,12 @@ func (r *Reconciler) ProcessTestCase(ctx context.Context, objectTemplate *tofani
 
 			r.Log.Info("Successfully applied value to template", "Path", field.Path, "Key", key, "ModifiedTemplate", string(modifiedTemplate))
 
-			// Here, you would typically create or update the resource based on the modified template
+			// create or update the resource based on the modified template
 			// This involves converting the JSON back into a Kubernetes object and applying it
-			err = r.ApplyObjectToCluster(ctx, modifiedTemplate)
+			err = r.ApplyObjectToCluster(ctx, modifiedTemplate, testCase.GetName())
 			if err != nil {
-				// Handle the error appropriately
 				r.Log.Error(err, "Failed to apply object to cluster", "ModifiedTemplate", modifiedTemplate)
+				return err
 			}
 		}
 	}
@@ -83,7 +89,7 @@ func (r *Reconciler) ApplyValueToTemplate(objectTemplate *tofaniov1alpha1.Object
 	return modifiedTemplate, nil
 }
 
-func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) error {
+func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte, testCaseName string) error {
 	// First, convert JSON to YAML because some Kubernetes APIs expect YAML
 	objJSON, err := yaml.YAMLToJSON(objJSON)
 	if err != nil {
@@ -106,12 +112,21 @@ func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) e
 	if unstrObj.GetNamespace() == "" {
 		unstrObj.SetNamespace("default")
 	}
+	// Prepare the resource name
 	if unstrObj.GetName() == "" {
 		// Generate a unique name if not provided, for example:
 		unstrObj.SetName("testcase-" + utils.GenerateRandomString(5))
 	}
 
-	// Use the controller-runtime client to apply the object to the cluster
+	// Set tofan.io/testcase-name: testcase.metadata.name
+	labels := unstrObj.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string) // Initialize if nil
+	}
+	// Set or update the label with the object's name.
+	labels[constants.TofanTestCaseNameLabel] = testCaseName
+	unstrObj.SetLabels(labels)
+
 	// Check if the object already exists
 	namespacedName := client.ObjectKey{Namespace: unstrObj.GetNamespace(), Name: unstrObj.GetName()}
 	var existing unstructured.Unstructured
@@ -142,4 +157,40 @@ func (r *Reconciler) ApplyObjectToCluster(ctx context.Context, objJSON []byte) e
 		r.Log.Info("Successfully updated existing resource", "GVK", gvk, "Name", unstrObj.GetName())
 		return nil
 	}
+}
+
+// TeardownResourcesForTestCase deletes all resources associated with a given TestCase, using objTpl to identify resource types.
+func (r *Reconciler) TeardownResourcesForTestCase(ctx context.Context, testCase *tofaniov1alpha1.TestCase, objTpl *tofaniov1alpha1.ObjectTemplate) error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		r.Log.Error(err, "Failed to get cluster config")
+		return err
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		r.Log.Error(err, "Failed to create dynamic client")
+		return err
+	}
+	// Construct the GroupVersionResource from ObjectTemplate status information
+	gvr := schema.GroupVersionResource{
+		Group:    objTpl.Status.Group,
+		Version:  objTpl.Status.Version,
+		Resource: fmt.Sprintf("%ss", strings.ToLower(objTpl.Status.Kind)), // Assuming simple pluralization
+	}
+
+	// Matching labels indicating they belong to the testCase
+	labelSelector := fmt.Sprintf("%s=%s", constants.TofanTestCaseNameLabel, testCase.Name)
+	deletePolicy := metav1.DeletePropagationForeground
+	deleteOptions := metav1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	}
+
+	if err := dynamicClient.Resource(gvr).Namespace(testCase.Namespace).DeleteCollection(ctx, deleteOptions, metav1.ListOptions{LabelSelector: labelSelector}); err != nil {
+		r.Log.Error(err, "Failed to delete resources for testCase", "TestCase", testCase.Name, "GVR", gvr)
+		return err
+	}
+
+	r.Log.Info("Successfully deleted resources for testCase", "TestCase", testCase.Name, "GVR", gvr)
+	return nil
 }
