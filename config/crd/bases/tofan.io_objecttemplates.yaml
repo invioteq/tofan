@@ -26,6 +26,9 @@ spec:
     - jsonPath: .status.group
       name: Group
       type: string
+    - jsonPath: .status.version
+      name: Version
+      type: string
     - jsonPath: .status.kind
       name: Kind
       type: string
@@ -137,6 +140,9 @@ spec:
                 type: string
               kind:
                 description: kind the kind of the objectTemplate.
+                type: string
+              version:
+                description: Version is the API Version of the objectTemplate.
                 type: string
             type: object
         type: object
