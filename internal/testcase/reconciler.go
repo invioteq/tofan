@@ -40,8 +40,8 @@ func (r *Reconciler) syncDeleteTestCase(ctx context.Context, testCase *tofaniov1
 		}
 	}
 
-	if controllerutil.ContainsFinalizer(testCase, constants.TofanObjectTemplateFinalizer) {
-		controllerutil.RemoveFinalizer(testCase, constants.TofanObjectTemplateFinalizer)
+	if controllerutil.ContainsFinalizer(testCase, constants.TofanFinalizer) {
+		controllerutil.RemoveFinalizer(testCase, constants.TofanFinalizer)
 
 		if err = r.Update(ctx, testCase); err != nil {
 			return ctrl.Result{}, err
@@ -53,8 +53,8 @@ func (r *Reconciler) syncDeleteTestCase(ctx context.Context, testCase *tofaniov1
 }
 
 func (r *Reconciler) syncTestCase(ctx context.Context, testCase *tofaniov1alpha1.TestCase) (result reconcile.Result, err error) {
-	if !controllerutil.ContainsFinalizer(testCase, constants.TofanObjectTemplateFinalizer) {
-		controllerutil.AddFinalizer(testCase, constants.TofanObjectTemplateFinalizer)
+	if !controllerutil.ContainsFinalizer(testCase, constants.TofanFinalizer) {
+		controllerutil.AddFinalizer(testCase, constants.TofanFinalizer)
 
 		if testCase.Status.Phase == "" {
 			r.EmitEvent(testCase, testCase.GetName(), controllerutil.OperationResultUpdatedStatusOnly, StatusPendingMsg, nil)
@@ -89,25 +89,9 @@ func (r *Reconciler) syncTestCase(ctx context.Context, testCase *tofaniov1alpha1
 
 			err = r.ProcessTestCase(ctx, objectTemplate, testCase)
 			if err == nil {
-				// todo : TestCase should watch for external resources if there are all ready
-				// todo: so we can mark the TestCase completed
-				r.EmitEvent(testCase, testCase.GetName(), controllerutil.OperationResultUpdatedStatus, StatusCompletedMsg, nil)
-				r.ProcessCondition(ctx, testCase, constants.ObjConditionReady, metav1.ConditionTrue, StatusCompletedReason, StatusCompletedMsg)
-				testCase.Status.Phase = StatusCompleted
-				err = r.UpdateStatus(ctx, testCase)
-				if err != nil {
-					r.Log.Info("error updating the status")
-				}
-				// todo: as soon as the testcase.spec.status.phase is marked Completed so
-				// todo: then trigger TeardownResources process
-				// todo: add annotation tofan.io/testcase-ttl : 5 minutes
-				// todo: add annotation that allows end users to keep the Resources create by an X testCase
-				// todo: tofan.io/testcase-keep-resources: (default is false)
-				time.Sleep(30 * time.Second)
-				if err := r.TeardownResourcesForTestCase(ctx, testCase, objectTemplate); err != nil {
-					r.Log.Error(err, "Failed to teardown resources", "TestCase", testCase.Name)
-				}
-				r.Log.Info("Teardown completed successfully", "TestCase", testCase.Name)
+				r.Log.Info("Starting readiness resource watcher", "TestCase", testCase.Name)
+				r.startReadinessWatcher(ctx, testCase, objectTemplate)
+
 				return reconcile.Result{}, err
 			} else {
 				r.EmitEvent(testCase, testCase.GetName(), controllerutil.OperationResultUpdatedStatus, StatusErrorMsg, err)
