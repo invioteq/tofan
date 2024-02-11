@@ -12,8 +12,8 @@ import (
 )
 
 func (r *Reconciler) syncObjectTemplate(ctx context.Context, objecTpl *tofaniov1alpha1.ObjectTemplate) (result reconcile.Result, err error) {
-	if !controllerutil.ContainsFinalizer(objecTpl, constants.TofanObjectTemplateFinalizer) {
-		controllerutil.AddFinalizer(objecTpl, constants.TofanObjectTemplateFinalizer)
+	if !controllerutil.ContainsFinalizer(objecTpl, constants.TofanFinalizer) {
+		controllerutil.AddFinalizer(objecTpl, constants.TofanFinalizer)
 
 		if err = r.Update(ctx, objecTpl); err != nil {
 			r.Log.Info("Reconciling ObjectTemplate")
@@ -42,8 +42,8 @@ func (r *Reconciler) syncObjectTemplate(ctx context.Context, objecTpl *tofaniov1
 }
 
 func (r *Reconciler) syncDeleteObjectTemplate(ctx context.Context, objecTpl *tofaniov1alpha1.ObjectTemplate) (result reconcile.Result, err error) {
-	if controllerutil.ContainsFinalizer(objecTpl, constants.TofanObjectTemplateFinalizer) {
-		controllerutil.RemoveFinalizer(objecTpl, constants.TofanObjectTemplateFinalizer)
+	if controllerutil.ContainsFinalizer(objecTpl, constants.TofanFinalizer) {
+		controllerutil.RemoveFinalizer(objecTpl, constants.TofanFinalizer)
 
 		if err = r.Update(ctx, objecTpl); err != nil {
 			return ctrl.Result{}, err
