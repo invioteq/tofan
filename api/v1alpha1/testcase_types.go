@@ -70,6 +70,8 @@ type MetricTarget struct {
 
 // TestCaseStatus defines the observed state of TestCase
 type TestCaseStatus struct {
+	// Phase indicates the testcase exec phase
+	Phase string `json:"phase,omitempty"`
 	// Conditions List of status conditions to indicate the status of Space
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
@@ -78,6 +80,7 @@ type TestCaseStatus struct {
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age"
 //+kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status",description="Ready"
+// +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 
 // TestCase is the Schema for the testcases API
 type TestCase struct {
@@ -86,6 +89,14 @@ type TestCase struct {
 
 	Spec   TestCaseSpec   `json:"spec,omitempty"`
 	Status TestCaseStatus `json:"status,omitempty"`
+}
+
+func (in *TestCase) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+func (in *TestCase) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true

@@ -37,6 +37,8 @@ type ObjectTemplateSpec struct {
 type ObjectTemplateStatus struct {
 	// Group is the API group of the objectTemplate.
 	Group string `json:"group,omitempty"`
+	// Version is the API Version of the objectTemplate.
+	Version string `json:"version,omitempty"`
 	// kind the kind of the objectTemplate.
 	Kind string `json:"kind,omitempty"`
 	// Conditions List of status conditions to indicate the status of Space
@@ -48,6 +50,7 @@ type ObjectTemplateStatus struct {
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status",description="Ready"
 // +kubebuilder:printcolumn:name="Group",type=string,JSONPath=`.status.group`
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`
 // +kubebuilder:printcolumn:name="Kind",type=string,JSONPath=`.status.kind`
 
 // ObjectTemplate is the Schema for the objecttemplates API

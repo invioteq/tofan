@@ -90,21 +90,33 @@ func GenerateRandomString(n int) string {
 }
 
 // ExtractKindAndAPIVersion extracts the kind and apiVersion from an ObjectTemplate's spec.template.
-func ExtractKindAndAPIVersion(objectTemplate *tofaniov1alpha1.ObjectTemplate) (string, string, error) {
+func ExtractKindAndAPIVersion(objectTemplate *tofaniov1alpha1.ObjectTemplate) (string, string, string, error) {
 	var templateMap map[string]interface{}
 	if err := json.Unmarshal(objectTemplate.Spec.Template.Raw, &templateMap); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	kind, ok := templateMap["kind"].(string)
 	if !ok {
-		return "", "", fmt.Errorf("kind not found or not a string in ObjectTemplate spec.template")
+		return "", "", "", fmt.Errorf("kind not found or not a string in ObjectTemplate spec.template")
 	}
 
 	apiVersion, ok := templateMap["apiVersion"].(string)
 	if !ok {
-		return "", "", fmt.Errorf("apiVersion not found or not a string in ObjectTemplate spec.template")
+		return "", "", "", fmt.Errorf("apiVersion not found or not a string in ObjectTemplate spec.template")
 	}
 
-	return kind, apiVersion, nil
+	// Split apiVersion into group and version
+	apiVersionParts := strings.SplitN(apiVersion, "/", 2)
+	if len(apiVersionParts) == 2 {
+		// For resources outside the core group, apiVersion is "group/version"
+		group := apiVersionParts[0]
+		version := apiVersionParts[1]
+		return kind, group, version, nil
+	} else {
+		// For core group resources, apiVersion is "version" (e.g., "v1")
+		group := "" // Core group has no group name
+		version := apiVersionParts[0]
+		return kind, group, version, nil
+	}
 }
