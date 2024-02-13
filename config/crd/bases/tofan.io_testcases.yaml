@@ -47,32 +47,32 @@ spec:
             description: TestCaseSpec defines the desired state of TestCase
             properties:
               action:
-                description: Action specifies the operation to perform with the ObjectTemplate
-                  (e.g., create, delete)
+                description: Action specifies the operation to perform on the objectTemplate,
+                  e.g., create
                 type: string
               concurrency:
-                description: Concurrency specifies how many operations can be performed
+                description: Concurrency controls how many instances can be created
                   concurrently
                 type: integer
               count:
-                description: Count specifies the number of instances to create/delete
+                description: Count specifies the number of instances to create
                 type: integer
               dynamicFields:
-                description: DynamicFields specifies how to dynamically set fields
-                  in the ObjectTemplate based on the test case.
+                description: DynamicFields allow specifying dynamic values for certain
+                  fields in the object template
                 items:
                   description: DynamicField defines a field to dynamically set based
                     on TestCase parameters.
                   properties:
                     path:
-                      description: Path specifies the JSON path to the field within
-                        the ObjectTemplate that needs to be dynamically set.
+                      description: Path is the JSON path to the field within the object
+                        template that needs a dynamic value.
                       type: string
                     values:
                       additionalProperties:
                         x-kubernetes-preserve-unknown-fields: true
-                      description: Values are the values to apply to the dynamic field
-                        as simple strings.
+                      description: Values are the dynamic values to apply to the specified
+                        path.
                       type: object
                   required:
                   - path
@@ -80,7 +80,8 @@ spec:
                   type: object
                 type: array
               objectTemplateRef:
-                description: Reference to a ObjectTemplate
+                description: ObjectTemplateRef is a reference to an ObjectTemplate
+                  resource
                 properties:
                   group:
                     description: Group is the API group of the SpaceTemplate,  "tofan.io/v1alpha1".
@@ -90,9 +91,50 @@ spec:
                       which should be "ObjectTemplate".
                     type: string
                   name:
-                    description: Name of the ObjectTemplate.
+                    description: Name is the name of the ObjectTemplate resource
                     type: string
                 type: object
+              readinessCriteria:
+                description: ReadinessCriteria specifies the conditions that must
+                  be met for the resources to be considered ready
+                items:
+                  description: ResourceReadinessCriteria defines readiness criteria
+                    for a specific resource type
+                  properties:
+                    conditions:
+                      description: Conditions are the specific conditions to be met
+                        for the resource to be considered ready
+                      items:
+                        description: ResourceCondition defines a single condition
+                          to check on a resource for readiness
+                        properties:
+                          jsonPath:
+                            description: JSONPath (optional) is a JSON path expression
+                              to locate the condition value within a custom resource
+                              status
+                            type: string
+                          status:
+                            description: Status is the status value the condition
+                              must have, e.g., "True", "False"
+                            type: string
+                          type:
+                            description: Type is the type of condition, e.g., Available
+                              for Deployments, Ready for custom resources
+                            type: string
+                        required:
+                        - status
+                        - type
+                        type: object
+                      type: array
+                    resourceType:
+                      description: ResourceType is the kind of resource to check for
+                        readiness, e.g., Deployment, CustomResource
+                      type: string
+                  required:
+                  - conditions
+                  - resourceType
+                  type: object
+                type: array
               targetMetrics:
                 description: TargetMetrics defines the metrics that should be collected
                   during the test
@@ -115,6 +157,7 @@ spec:
             required:
             - concurrency
             - count
+            - readinessCriteria
             type: object
           status:
             description: TestCaseStatus defines the observed state of TestCase
